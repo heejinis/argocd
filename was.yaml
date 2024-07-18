@@ -1,0 +1,117 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: 1st-was
+  labels:
+    app: was-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: was-app
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: was-app
+    spec:
+      containers:
+        - image: jinwoo0824/tomcat:v1.4
+          name: was
+          ports:
+            - containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: 400Mi
+              cpu: 400m
+            limits:
+              memory: 400Mi
+              cpu: 400m
+          volumeMounts:
+            - name: pv-was
+              mountPath: /1st-was
+      volumes:
+        - name: pv-was
+          persistentVolumeClaim:
+            claimName: pvcwas
+      nodeSelector:
+        app: was-app
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: was-svc
+spec:
+  selector:
+    app: was-app
+  type: ClusterIP
+  clusterIP: 10.100.100.103
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+
+---
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-was
+spec:
+  capacity:
+    storage: 8Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: was-sc
+  hostPath:
+    path: /data/was
+    type: DirectoryOrCreate
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvcwas
+spec:
+  accessModes:
+    - ReadWriteMany
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 8Gi
+  storageClassName: was-sc
+
+---
+
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: hpe-was
+spec:
+  maxReplicas: 10
+  minReplicas: 3
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: 1st-was
+  targetCPUUtilizationPercentage: 50

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Node
+metadata:
+  name: k8s-worker1new
+  labels:
+    app: web-app
+    order: order-app
+    sign: sign-app
+---
+apiVersion: v1
+kind: Node
+metadata:
+  name:  k8s-worker2new
+  labels:
+    app: was-app
